@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time JavaScript Syntax Highlighter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #2d2d30;
+            padding: 15px 20px;
+            border-bottom: 1px solid #3e3e42;
+        }
+        
+        .header h1 {
+            color: #569cd6;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .control-group label {
+            font-size: 14px;
+            color: #cccccc;
+        }
+        
+        select, button {
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #5a5a5a;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #4a4a4a;
+            cursor: pointer;
+        }
+        
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .editor-section {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .editor-title {
+            font-size: 18px;
+            color: #569cd6;
+        }
+        
+        .stats {
+            font-size: 12px;
+            color: #858585;
+        }
+        
+        .editor-container {
+            position: relative;
+            flex: 1;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #1e1e1e;
+        }
+        
+        .line-numbers {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px;
+            background: #252526;
+            border-right: 1px solid #3e3e42;
+            padding: 10px 5px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #858585;
+            overflow: hidden;
+        }
+        
+        .editor-input {
+            position: absolute;
+            left: 50px;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: transparent;
+            border: none;
+            outline: none;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            color: transparent;
+            caret-color: #d4d4d4;
+            resize: none;
+            white-space: pre;
+            overflow: auto;
+        }
+        
+        .syntax-overlay {
+            position: absolute;
+            left: 50px;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            padding: 10px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            pointer-events: none;
+            white-space: pre;
+            overflow: auto;
+        }
+        
+        .info-panel {
+            width: 350px;
+            background: #252526;
+            border-left: 1px solid #3e3e42;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .panel-section {
+            margin-bottom: 25px;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            color: #569cd6;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #3e3e42;
+            padding-bottom: 5px;
+        }
+        
+        .token-list {
+            max-height: 200px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 8px;
+        }
+        
+        .token-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+            font-size: 12px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .token-item:last-child {
+            border-bottom: none;
+        }
+        
+        .token-type {
+            font-weight: bold;
+        }
+        
+        .token-value {
+            color: #ce9178;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .parse-tree {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .tree-node {
+            margin-left: 15px;
+            padding: 2px 0;
+        }
+        
+        .tree-root {
+            margin-left: 0;
+            font-weight: bold;
+            color: #569cd6;
+        }
+        
+        /* Syntax Highlighting Colors */
+        .keyword { color: #61c863; font-weight: bold; }
+        .string { color: #fe79b7; }
+        .number { color: #8145f8; }
+        .comment { color: #3c7626; font-style: italic; }
+        .operator { color:#fbff23 ; font-weight: bold; }
+        .identifier { color:#f5950e; }
+        .punctuation { color:#afb5ff ; }
+        .error {
+            color: #fff !important;
+            background: rgba(255, 103, 103, 0.241) !important;
+            text-decoration: none !important;
+        }
+        
+        .examples {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .example-btn {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .example-btn:hover {
+            background: #1177bb;
+        }
+        
+        body, .editor-input, .syntax-overlay, .line-numbers, .info-panel, .token-list, .parse-tree {
+            color: #d4d4d4 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Real-Time JavaScript Syntax Highlighter</h1>
+        <div class="controls">
+            <div class="control-group">
+                <label>Lexer Method:</label>
+                <select id="lexerMethod">
+                    <option value="table">Table-Driven (Formal)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Parser:</label>
+                <select id="parserMethod">
+                    <option value="topdown">Top-Down Recursive</option>
+                </select>
+            </div>
+            <button onclick="clearEditor()">Clear</button>
+            <button onclick="exportResults()">Export</button>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="editor-section">
+            <div class="editor-header">
+                <h2 class="editor-title">JavaScript Code Editor</h2>
+                <div class="stats">
+                    <span id="charCount">0 chars</span> | 
+                    <span id="lineCount">1 lines</span> | 
+                    <span id="tokenCount">0 tokens</span>
+                </div>
+            </div>
+            
+            <div class="examples">
+                <button class="example-btn" onclick="loadExample('variables')">Variables</button>
+                <button class="example-btn" onclick="loadExample('functions')">Functions</button>
+                <button class="example-btn" onclick="loadExample('loops')">Loops</button>
+                <button class="example-btn" onclick="loadExample('classes')">Classes</button>
+            </div>
+            
+            <div class="editor-container">
+                <div class="line-numbers" id="lineNumbers">1</div>
+                <textarea 
+                    class="editor-input" 
+                    id="codeInput" 
+                    placeholder="Type your JavaScript code here..."
+                    spellcheck="false"
+                ></textarea>
+                <div class="syntax-overlay" id="syntaxOverlay"></div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="panel-section">
+                <h3 class="panel-title">📋 Token Analysis</h3>
+                <div class="token-list" id="tokenList">
+                    <div style="color: #858585; text-align: center; padding: 20px;">
+                        Start typing to see tokens...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h3 class="panel-title">🌳 Parse Tree</h3>
+                <div class="parse-tree" id="parseTree">
+                    <div style="color: #858585; text-align: center; padding: 20px;">
+                        Parse tree will appear here...
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h3 class="panel-title">📊 Statistics</h3>
+                <div style="font-size: 14px; line-height: 1.6;">
+                    <div>Keywords: <span id="keywordCount">0</span></div>
+                    <div>Identifiers: <span id="identifierCount">0</span></div>
+                    <div>Strings: <span id="stringCount">0</span></div>
+                    <div>Numbers: <span id="numberCount">0</span></div>
+                    <div>Comments: <span id="commentCount">0</span></div>
+                    <div>Operators: <span id="operatorCount">0</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== LEXICAL ANALYZER ====================
+        // Formal Description & Table-Driven Approach
+        
+        class JavaScriptLexer {
+            constructor() {
+                // Token Definition Table (Formal Description)
+                this.tokenRules = [
+                    // Keywords (highest priority)
+                    { type: 'KEYWORD', pattern: /^(let|const|var|function|if|else|for|while|do|switch|case|default|break|continue|return|try|catch|finally|throw|class|extends|import|export|from|as|new|this|super|static|async|await|yield|typeof|instanceof|in|of|delete|void|null|undefined|true|false)$/, priority: 1 },
+                    
+                    // Identifiers
+                    { type: 'IDENTIFIER', pattern: /^[a-zA-Z_$][a-zA-Z0-9_$]*$/, priority: 2 },
+                    
+                    // Numbers
+                    { type: 'NUMBER', pattern: /^(\d+\.?\d*([eE][+-]?\d+)?|0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+)$/, priority: 1 },
+                    
+                    // Strings
+                    { type: 'STRING', pattern: /^(['"`])(?:\\.|(?!\1)[^\\])*\1$/, priority: 1 },
+                    
+                    // Template Literals
+                    { type: 'TEMPLATE', pattern: /^`(?:\\.|[^\\`])*`$/, priority: 1 },
+                    
+                    // Comments
+                    { type: 'COMMENT', pattern: /^(\/\/.*|\/\*[\s\S]*?\*\/)$/, priority: 1 },
+                    
+                    // Multi-character operators
+                    { type: 'OPERATOR', pattern: /^(===|!==|==|!=|<=|>=|<<|>>|>>>|\|\||&&|\+\+|--|=>|\+=|-=|\*=|\/=|%=|\*\*|\?\?|\?\.|\.\.\.|\|=|&=|\^=|<<=|>>=|>>>=)$/, priority: 1 },
+                    
+                    // Single-character operators
+                    { type: 'OPERATOR', pattern: /^[+\-*/%=<>!&|^~?:]$/, priority: 2 },
+                    
+                    // Punctuation
+                    { type: 'PUNCTUATION', pattern: /^[;,.\(\)\[\]{}]$/, priority: 1 },
+                    
+                    // Whitespace
+                    { type: 'WHITESPACE', pattern: /^\s+$/, priority: 3 }
+                ];
+                
+                // Sort rules by priority for table-driven approach
+                this.tokenRules.sort((a, b) => a.priority - b.priority);
+            }
+            
+            tokenize(input) {
+                const tokens = [];
+                let position = 0;
+                let line = 1;
+                let column = 1;
+                
+                while (position < input.length) {
+                    let matched = false;
+                    let longestMatch = { length: 0, token: null };
+                    
+                    // Try to match longest possible token (table-driven approach)
+                    for (let length = 1; length <= input.length - position; length++) {
+                        const substring = input.substr(position, length);
+                        
+                        // Check against all token rules
+                        for (const rule of this.tokenRules) {
+                            if (rule.pattern.test(substring)) {
+                                if (length > longestMatch.length) {
+                                    longestMatch = {
+                                        length: length,
+                                        token: {
+                                            type: rule.type,
+                                            value: substring,
+                                            position: position,
+                                            line: line,
+                                            column: column
+                                        }
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (longestMatch.token) {
+                        // Skip whitespace tokens for highlighting
+                        if (longestMatch.token.type !== 'WHITESPACE') {
+                            tokens.push(longestMatch.token);
+                        }
+                        
+                        // Update position counters
+                        for (let i = 0; i < longestMatch.length; i++) {
+                            if (input[position + i] === '\n') {
+                                line++;
+                                column = 1;
+                            } else {
+                                column++;
+                            }
+                        }
+                        
+                        position += longestMatch.length;
+                        matched = true;
+                    }
+                    
+                    if (!matched) {
+                        // Handle unknown characters
+                        tokens.push({
+                            type: 'ERROR',
+                            value: input[position],
+                            position: position,
+                            line: line,
+                            column: column
+                        });
+                        
+                        if (input[position] === '\n') {
+                            line++;
+                            column = 1;
+                        } else {
+                            column++;
+                        }
+                        position++;
+                    }
+                }
+                
+                return tokens;
+            }
+        }
+        
+        // ==================== SYNTAX ANALYZER (TOP-DOWN PARSER) ====================
+        
+        class TopDownParser {
+            constructor(tokens) {
+                this.tokens = tokens;
+                this.position = 0;
+                this.parseTree = { type: 'Program', children: [] };
+            }
+
+            parse() {
+                try {
+                    while (this.position < this.tokens.length) {
+                        const statement = this.parseStatement();
+                        if (statement) {
+                            this.parseTree.children.push(statement);
+                        }
+                    }
+                } catch (error) {
+                    this.parseTree.children.push({
+                        type: 'ERROR',
+                        message: error.message,
+                        position: this.position
+                    });
+                }
+
+                return this.parseTree;
+            }
+
+            getCurrentToken() {
+                return this.position < this.tokens.length ? this.tokens[this.position] : null;
+            }
+
+            consumeToken(expectedType = null, expectedValue = null) {
+                const token = this.getCurrentToken();
+                if (token) {
+                    if (expectedType && token.type !== expectedType) {
+                        // Hatalı tokenı error olarak işaretle
+                        throw new Error(`Expected ${expectedType}, got ${token.type}`);
+                    }
+                    if (expectedValue && token.value !== expectedValue) {
+                        throw new Error(`Expected ${expectedValue}, got ${token.value}`);
+                    }
+                    this.position++;
+                    return token;
+                } else if (expectedType || expectedValue) {
+                    // Beklenen token yoksa error döndür
+                    throw new Error(`Expected ${expectedType || ''} ${expectedValue || ''} but reached end of input`);
+                }
+                return null;
+            }
+
+            parseStatement() {
+                const token = this.getCurrentToken();
+                if (!token) return null;
+
+                // Yorum satırlarını atla
+                if (token.type === 'COMMENT') {
+                    this.consumeToken();
+                    return {
+                        type: 'Comment',
+                        value: token.value
+                    };
+                }
+
+                if (token.type === 'KEYWORD' && ['let', 'const', 'var'].includes(token.value)) {
+                    return this.parseVariableDeclaration();
+                }
+                if (token.type === 'KEYWORD' && token.value === 'function') {
+                    return this.parseFunctionDeclaration();
+                }
+                if (token.type === 'KEYWORD' && token.value === 'if') {
+                    return this.parseIfStatement();
+                }
+                if (token.type === 'KEYWORD' && token.value === 'for') {
+                    return this.parseForStatement();
+                }
+                if (token.type === 'KEYWORD' && token.value === 'while') {
+                    return this.parseWhileStatement();
+                }
+                if (token.type === 'KEYWORD' && token.value === 'return') {
+                    return this.parseReturnStatement();
+                }
+
+                // Hatalı veya beklenmeyen tokenlarda ilerle
+                if (token.type === 'ERROR' || token.type === 'UNKNOWN') {
+                    this.consumeToken();
+                    return {
+                        type: 'Unknown',
+                        value: token.value
+                    };
+                }
+
+                return this.parseExpressionStatement();
+            }
+
+            parseVariableDeclaration(expectSemicolon = true) {
+                const declType = this.consumeToken('KEYWORD');
+                const identifier = this.consumeToken('IDENTIFIER');
+                let node = {
+                    type: 'VariableDeclaration',
+                    declarationType: declType.value,
+                    children: [
+                        { type: 'Identifier', value: identifier?.value || 'missing' }
+                    ]
+                };
+                const nextToken = this.getCurrentToken();
+                if (nextToken && nextToken.type === 'OPERATOR' && nextToken.value === '=') {
+                    this.consumeToken('OPERATOR');
+                    const expression = this.parseExpression();
+                    node.children.push({
+                        type: 'Assignment',
+                        children: [expression]
+                    });
+                }
+                if (expectSemicolon) {
+                    const semi = this.getCurrentToken();
+                    if (semi && semi.type === 'PUNCTUATION' && semi.value === ';') {
+                        this.consumeToken('PUNCTUATION');
+                    }
+                }
+                return node;
+            }
+
+            parseFunctionDeclaration() {
+                this.consumeToken('KEYWORD'); // function
+                const name = this.consumeToken('IDENTIFIER');
+                this.consumeToken('PUNCTUATION', '(');
+
+                // Parse parameters
+                let params = [];
+                while (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ')')) {
+                    if (this.getCurrentToken().type === 'IDENTIFIER') {
+                        params.push({ type: 'Identifier', value: this.consumeToken('IDENTIFIER').value });
+                    }
+                    if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ',') {
+                        this.consumeToken('PUNCTUATION', ',');
+                    }
+                }
+                this.consumeToken('PUNCTUATION', ')');
+
+                // Parse function body
+                let body = [];
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '{') {
+                    body = this.parseBlock();
+                }
+
+                return {
+                    type: 'FunctionDeclaration',
+                    children: [
+                        { type: 'Identifier', value: name?.value || 'anonymous' },
+                        { type: 'Parameters', children: params },
+                        { type: 'Body', children: body }
+                    ]
+                };
+            }
+
+            parseBlock() {
+                this.consumeToken('PUNCTUATION', '{');
+                let statements = [];
+                while (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '}')) {
+                    const stmt = this.parseStatement();
+                    if (stmt) statements.push(stmt);
+                }
+                this.consumeToken('PUNCTUATION', '}');
+                return statements;
+            }
+
+            parseIfStatement() {
+                this.consumeToken('KEYWORD'); // if
+                this.consumeToken('PUNCTUATION', '(');
+                const condition = this.parseExpression();
+                this.consumeToken('PUNCTUATION', ')');
+                let body = [];
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '{') {
+                    body = this.parseBlock();
+                } else {
+                    const stmt = this.parseStatement();
+                    if (stmt) body.push(stmt);
+                }
+                // else kısmı
+                let elseBody = [];
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'KEYWORD' && this.getCurrentToken().value === 'else') {
+                    this.consumeToken('KEYWORD', 'else');
+                    if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '{') {
+                        elseBody = this.parseBlock();
+                    } else {
+                        const stmt = this.parseStatement();
+                        if (stmt) elseBody.push(stmt);
+                    }
+                }
+                return {
+                    type: 'IfStatement',
+                    children: [
+                        { type: 'Condition', children: [condition] },
+                        { type: 'Body', children: body },
+                        ...(elseBody.length > 0 ? [{ type: 'ElseBody', children: elseBody }] : [])
+                    ]
+                };
+            }
+
+            parseForStatement() {
+                this.consumeToken('KEYWORD'); // for
+                this.consumeToken('PUNCTUATION', '(');
+
+                // Parse init (allow empty)
+                let init = null;
+                if (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ';')) {
+                    if (this.getCurrentToken().type === 'KEYWORD' && ['let', 'const', 'var'].includes(this.getCurrentToken().value)) {
+                        init = this.parseVariableDeclaration(false); // Noktalı virgül burada tüketilmez!
+                    } else {
+                        init = this.parseExpression();
+                    }
+                }
+                // Her durumda ilk noktalı virgülü tüket
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ';') {
+                    this.consumeToken('PUNCTUATION', ';');
+                }
+
+                // Parse condition (allow empty)
+                let condition = null;
+                if (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ';')) {
+                    condition = this.parseExpression();
+                }
+                // Her durumda ikinci noktalı virgülü tüket
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ';') {
+                    this.consumeToken('PUNCTUATION', ';');
+                }
+
+                // Parse update (allow empty)
+                let update = null;
+                if (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ')')) {
+                    update = this.parseExpression();
+                }
+                // Parantezi kapat
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ')') {
+                    this.consumeToken('PUNCTUATION', ')');
+                }
+
+                // Parse body
+                let body = [];
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '{') {
+                    body = this.parseBlock();
+                } else {
+                    const stmt = this.parseStatement();
+                    if (stmt) body.push(stmt);
+                }
+                return {
+                    type: 'ForStatement',
+                    children: [
+                        { type: 'Init', children: init ? [init] : [] },
+                        { type: 'Condition', children: condition ? [condition] : [] },
+                        { type: 'Update', children: update ? [update] : [] },
+                        { type: 'Body', children: body }
+                    ]
+                };
+            }
+
+            parseWhileStatement() {
+                this.consumeToken('KEYWORD'); // while
+                this.consumeToken('PUNCTUATION', '(');
+                const condition = this.parseExpression();
+                this.consumeToken('PUNCTUATION', ')');
+                let body = [];
+                if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === '{') {
+                    body = this.parseBlock();
+                } else {
+                    const stmt = this.parseStatement();
+                    if (stmt) body.push(stmt);
+                }
+                return {
+                    type: 'WhileStatement',
+                    children: [
+                        { type: 'Condition', children: [condition] },
+                        { type: 'Body', children: body }
+                    ]
+                };
+            }
+
+            parseReturnStatement() {
+                this.consumeToken('KEYWORD'); // return
+                let expression = null;
+                const nextToken = this.getCurrentToken();
+                if (nextToken && !(nextToken.type === 'PUNCTUATION' && nextToken.value === ';')) {
+                    expression = this.parseExpression();
+                }
+                const semi = this.getCurrentToken();
+                if (semi && semi.type === 'PUNCTUATION' && semi.value === ';') {
+                    this.consumeToken('PUNCTUATION');
+                }
+                return {
+                    type: 'ReturnStatement',
+                    children: expression ? [expression] : []
+                };
+            }
+
+            parseExpressionStatement() {
+                const expression = this.parseExpression();
+                const semi = this.getCurrentToken();
+                if (semi && semi.type === 'PUNCTUATION' && semi.value === ';') {
+                    this.consumeToken('PUNCTUATION');
+                }
+                return {
+                    type: 'ExpressionStatement',
+                    children: [expression]
+                };
+            }
+
+            parseExpression() {
+                let left = this.parsePrimary();
+                while (this.getCurrentToken() && (this.getCurrentToken().type === 'OPERATOR')) {
+                    const op = this.consumeToken('OPERATOR');
+                    if (op.value === '=') {
+                        const right = this.parseExpression();
+                        left = {
+                            type: 'AssignmentExpression',
+                            operator: op.value,
+                            children: [left, right]
+                        };
+                    } else {
+                        const right = this.parsePrimary();
+                        left = {
+                            type: 'BinaryExpression',
+                            operator: op.value,
+                            children: [left, right]
+                        };
+                    }
+                }
+                return left;
+            }
+
+            parsePrimary() {
+                let node;
+                const token = this.getCurrentToken();
+                if (!token) return { type: 'Empty', children: [] };
+
+                if (token.type === 'IDENTIFIER') {
+                    node = { type: 'Identifier', value: this.consumeToken().value };
+                } else if (token.type === 'NUMBER') {
+                    node = { type: 'Literal', dataType: 'number', value: this.consumeToken().value };
+                } else if (token.type === 'STRING' || token.type === 'TEMPLATE') {
+                    node = { type: 'Literal', dataType: 'string', value: this.consumeToken().value };
+                } else if (token.type === 'KEYWORD' && ['true', 'false', 'null', 'undefined'].includes(token.value)) {
+                    node = { type: 'Literal', dataType: 'boolean', value: this.consumeToken().value };
+                } else {
+                    // Skip unknown tokens
+                    node = { type: 'Unknown', value: this.consumeToken().value };
+                }
+
+                // MemberExpression ve CallExpression zincirlerini işle
+                while (true) {
+                    const next = this.getCurrentToken();
+                    if (next && next.type === 'PUNCTUATION' && next.value === '.') {
+                        this.consumeToken('PUNCTUATION', '.');
+                        const property = this.consumeToken('IDENTIFIER');
+                        node = {
+                            type: 'MemberExpression',
+                            object: node,
+                            property: { type: 'Identifier', value: property ? property.value : 'missing' }
+                        };
+                    } else if (next && next.type === 'PUNCTUATION' && next.value === '(') {
+                        this.consumeToken('PUNCTUATION', '(');
+                        let args = [];
+                        while (this.getCurrentToken() && !(this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ')')) {
+                            args.push(this.parseExpression());
+                            if (this.getCurrentToken() && this.getCurrentToken().type === 'PUNCTUATION' && this.getCurrentToken().value === ',') {
+                                this.consumeToken('PUNCTUATION', ',');
+                            }
+                        }
+                        this.consumeToken('PUNCTUATION', ')');
+                        node = {
+                            type: 'CallExpression',
+                            callee: node,
+                            arguments: args
+                        };
+                    } else {
+                        break;
+                    }
+                }
+
+                return node;
+            }
+        }
+        
+        // ==================== SYNTAX HIGHLIGHTER ====================
+        
+        class SyntaxHighlighter {
+            constructor() {
+                this.lexer = new JavaScriptLexer();
+            }
+
+            highlight(code) {
+                const tokens = this.lexer.tokenize(code);
+                let highlightedCode = '';
+                const lines = code.split('\n');
+                let globalPos = 0;
+
+                // Tüm kodda açık parantezleri takip et
+                let totalOpenParen = 0;
+                let totalOpenBrace = 0;
+                let totalOpenBracket = 0;
+                let totalOpenAngle = 0; // < ve > için
+
+                // Tüm kodda tırnakları takip et
+                function countUnclosedQuotesAll(text, quoteChar) {
+                    let count = 0;
+                    for (let i = 0; i < text.length; i++) {
+                        if (text[i] === quoteChar) {
+                            let backslashCount = 0;
+                            let j = i - 1;
+                            while (j >= 0 && text[j] === '\\') {
+                                backslashCount++;
+                                j--;
+                            }
+                            if (backslashCount % 2 === 0) {
+                                count++;
+                            }
+                        }
+                    }
+                    return count % 2 !== 0;
+                }
+
+                // Önce tüm kodda açık parantez ve tırnak var mı bak
+                for (let i = 0; i < code.length; i++) {
+                    if (code[i] === '(') totalOpenParen++;
+                    if (code[i] === ')') totalOpenParen--;
+                    if (code[i] === '{') totalOpenBrace++;
+                    if (code[i] === '}') totalOpenBrace--;
+                    if (code[i] === '[') totalOpenBracket++;
+                    if (code[i] === ']') totalOpenBracket--;
+                    if (code[i] === '<') totalOpenAngle++;
+                    if (code[i] === '>') totalOpenAngle--;
+                }
+                let globalParenError = totalOpenParen > 0;
+                let globalBraceError = totalOpenBrace > 0;
+                let globalBracketError = totalOpenBracket > 0;
+                let globalAngleError = totalOpenAngle > 0; // < ve > için
+                let globalQuoteError =
+                    countUnclosedQuotesAll(code, '"') ||
+                    countUnclosedQuotesAll(code, "'") ||
+                    countUnclosedQuotesAll(code, '`');
+
+                for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+                    const line = lines[lineIdx];
+                    let lineTokens = tokens.filter(t => t.line === lineIdx + 1);
+                    let lineHtml = '';
+                    let linePos = 0;
+
+                    // Satırdaki tokenleri sırayla işle
+                    for (const token of lineTokens) {
+                        const relPos = token.position - globalPos;
+                        if (relPos > linePos) {
+                            lineHtml += this.escapeHtml(line.substring(linePos, relPos));
+                        }
+                        const cssClass = this.getTokenClass(token.type);
+                        lineHtml += `<span class="${cssClass}">${this.escapeHtml(token.value)}</span>`;
+                        linePos = relPos + token.value.length;
+                    }
+                    // Satırda kalan kısmı ekle
+                    if (linePos < line.length) {
+                        lineHtml += this.escapeHtml(line.substring(linePos));
+                    }
+
+                    const trimmed = line.trim();
+                    let isLastLine = (lineIdx === lines.length - 1);
+
+                    // Noktalı virgül hatası sadece satır tamamlanıp alt satıra geçildiyse göster
+                    let semicolonError = (
+    trimmed.length > 0 &&
+    !trimmed.startsWith('//') &&
+    !trimmed.startsWith('/*') &&
+    !trimmed.endsWith(';') &&
+    !trimmed.endsWith('>') &&      // Bunu ekle
+    !/[{\}:,]$/.test(trimmed) &&
+    !/^(if|for|while|else|function|class|switch|try|catch|finally|do|case|default|return|break|continue)/.test(trimmed) &&
+    (!isLastLine) // Son satırda hata gösterme
+);
+
+
+                    // Sadece kodun sonunda hala açık parantez/tırnak/tag varsa hata göster
+                    let showError = false;
+                    if (isLastLine && (globalParenError || globalBraceError || globalBracketError || globalQuoteError || globalAngleError)) {
+                        showError = true;
+                    }
+                    if (semicolonError) showError = true;
+
+                    if (showError) {
+                        lineHtml = `<span class="error" title="Sözdizimi hatası">${lineHtml}</span>`;
+                    }
+
+                    highlightedCode += lineHtml;
+                    if (lineIdx < lines.length - 1) highlightedCode += '\n';
+                    globalPos += line.length + 1;
+                }
+                return highlightedCode;
+            }
+            
+            getTokenClass(tokenType) {
+                switch (tokenType) {
+                    case 'KEYWORD': return 'keyword';
+                    case 'STRING': return 'string';
+                    case 'TEMPLATE': return 'string';
+                    case 'NUMBER': return 'number';
+                    case 'COMMENT': return 'comment';
+                    case 'OPERATOR': return 'operator';
+                    case 'IDENTIFIER': return 'identifier';
+                    case 'PUNCTUATION': return 'punctuation';
+                    case 'ERROR': return 'error';
+                    default: return '';
+                }
+            }
+            
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+        
+        function updateTokenList() {
+            const tokenList = document.getElementById('tokenList');
+            
+            if (currentTokens.length === 0) {
+                tokenList.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">No tokens found...</div>';
+                return;
+            }
+            
+            let tokenHtml = '';
+            currentTokens.slice(0, 300).forEach((token, index) => { // Limit to first 50 tokens
+                const truncatedValue = token.value.length > 15 ? 
+                    token.value.substring(0, 15) + '...' : token.value;
+                tokenHtml += `
+                    <div class="token-item">
+                        <span class="token-type ${highlighter.getTokenClass(token.type)}">${token.type}</span>
+                        <span class="token-value">"${highlighter.escapeHtml(truncatedValue)}"</span>
+                        <span style="color: #858585; font-size: 10px;">${token.position}</span>
+                    </div>
+                `;
+            });
+            
+            if (currentTokens.length > 300) {
+                tokenHtml += `<div style="color: #858585; text-align: center; padding: 10px; font-size: 11px;">... and ${currentTokens.length - 50} more tokens</div>`;
+            }
+            
+            tokenList.innerHTML = tokenHtml;
+        }
+        
+        function updateParseTree() {
+            const parseTreeDiv = document.getElementById('parseTree');
+            
+            if (currentTokens.length === 0) {
+                parseTreeDiv.innerHTML = '<div style="color: #858585; text-align: center; padding: 20px;">Parse tree will appear here...</div>';
+                return;
+            }
+            
+            try {
+                const parser = new TopDownParser(currentTokens);
+                currentParseTree = parser.parse();
+                
+                const treeHtml = renderParseTree(currentParseTree, 0);
+                parseTreeDiv.innerHTML = treeHtml;
+            } catch (error) {
+                parseTreeDiv.innerHTML = `<div style="color: #f44747; padding: 10px;">Parse Error: ${error.message}</div>`;
+            }
+        }
+        
+        function renderParseTree(node, depth) {
+            const indent = '  '.repeat(depth);
+            const className = depth === 0 ? 'tree-root' : 'tree-node';
+
+            let html = `<div class="${className}" style="margin-left: ${depth * 15}px;">`;
+
+            // MemberExpression ve CallExpression için özel gösterim
+            if (node.type === 'MemberExpression') {
+                html += `MemberExpression`;
+            } else if (node.type === 'CallExpression') {
+                html += `CallExpression`;
+            } else if (node.value) {
+                html += `${node.type}: "${highlighter.escapeHtml(node.value)}"`;
+            } else {
+                html += node.type;
+            }
+
+            if (node.declarationType) {
+                html += ` (${node.declarationType})`;
+            }
+            
+            if (node.dataType) {
+                html += ` [${node.dataType}]`;
+            }
+            
+            html += '</div>';
+
+            // MemberExpression ve CallExpression için özel çocuklar
+            if (node.type === 'MemberExpression') {
+                html += renderParseTree(node.object, depth + 1);
+                html += renderParseTree(node.property, depth + 1);
+            } else if (node.type === 'CallExpression') {
+                html += renderParseTree(node.callee, depth + 1);
+                if (node.arguments && node.arguments.length > 0) {
+                    node.arguments.forEach(arg => {
+                        html += renderParseTree(arg, depth + 1);
+                    });
+                }
+            } else if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    html += renderParseTree(child, depth + 1);
+                });
+            }
+
+            return html;
+        }
+        
+        function syncScroll() {
+            const codeInput = document.getElementById('codeInput');
+            const syntaxOverlay = document.getElementById('syntaxOverlay');
+            const lineNumbers = document.getElementById('lineNumbers');
+            
+            syntaxOverlay.scrollTop = codeInput.scrollTop;
+            syntaxOverlay.scrollLeft = codeInput.scrollLeft;
+            lineNumbers.scrollTop = codeInput.scrollTop;
+        }
+        
+function clearEditor() {
+    ['codeInput', 'syntaxOverlay', 'lineNumbers', 'tokenList', 'parseTree'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (id === 'codeInput') el.value = '';
+            else el.innerHTML = '';
+        }
+    });
+    currentTokens = [];
+    currentParseTree = null;
+}
+
+     
+        function exportResults() {
+            const code = document.getElementById('codeInput').value;
+            const results = {
+                code: code,
+                tokens: currentTokens,
+                parseTree: currentParseTree,
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'syntax_analysis_results.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function loadExample(type) {
+            const examples = {
+                variables: `// Variable Declarations Example
+let userName = "Ahmet";
+const PI = 3.14159;
+var isActive = true;
+let count = 0;
+
+// Template literals
+const greeting = \`Hello, \${userName}!\`;
+console.log(greeting);`,
+                
+                functions: `// Function Examples
+function calculateArea(radius) {
+    return PI * radius * radius;
+}
+
+const arrowFunction = (x, y) => {
+    return x + y;
+};
+
+// Async function
+async function fetchData() {
+    try {
+        const response = await fetch('/api/data');
+        return response.json();
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}`,
+                
+                loops: `// Loop Examples
+for (let i = 0; i < 10; i++) {
+    console.log(\`Number: \${i}\`);
+}
+
+const items = ['apple', 'banana', 'orange'];
+for (const item of items) {
+    console.log(item);
+}
+
+let counter = 0;
+while (counter < 5) {
+    counter++;
+    if (counter === 3) continue;
+    console.log(counter);
+}`,
+                
+                classes: `// Class Example
+class Rectangle {
+    constructor(width, height) {
+        this.width = width;
+        this.height = height;
+    }
+    
+    get area() {
+        return this.width * this.height;
+    }
+    
+    static compare(rect1, rect2) {
+        return rect1.area - rect2.area;
+    }
+}
+
+class Square extends Rectangle {
+    constructor(side) {
+        super(side, side);
+    }
+}`
+            };
+            
+            if (examples[type]) {
+                document.getElementById('codeInput').value = examples[type];
+                handleCodeChange();
+            }
+        }
+        
+        
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+            
+            // Load a default example
+            loadExample('variables');
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case 'k':
+                            e.preventDefault();
+                            clearEditor();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            exportResults();
+                            break;
+                    }
+                }
+            });
+        });
+        
+        // ========== GLOBALS ==========
+        let currentTokens = [];
+        let currentParseTree = null;
+        const highlighter = new SyntaxHighlighter();
+
+        // ========== INITIALIZE ==========
+        // Move these to the bottom so all functions are defined
+        function initializeEditor() {
+            const codeInput = document.getElementById('codeInput');
+            const syntaxOverlay = document.getElementById('syntaxOverlay');
+            const lineNumbers = document.getElementById('lineNumbers');
+
+            codeInput.addEventListener('input', handleCodeChange);
+            codeInput.addEventListener('scroll', syncScroll);
+
+            // Initial highlight
+            handleCodeChange();
+        }
+
+        function handleCodeChange() {
+            const codeInput = document.getElementById('codeInput');
+            const code = codeInput.value;
+
+            // Update syntax highlighting
+            updateSyntaxHighlighting(code);
+
+            // Update line numbers
+            updateLineNumbers(code);
+
+            // Update statistics
+            updateStatistics(code);
+
+            // Update token list
+            updateTokenList();
+
+            // Update parse tree
+            updateParseTree();
+        }
+
+        // ========== YENİ EKLENECEKLER ==========
+
+        // Satır numaralarını güncelle
+        function updateLineNumbers(code) {
+            const lineNumbers = document.getElementById('lineNumbers');
+            const lines = code.split('\n').length;
+            lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+        }
+
+        // İstatistikleri güncelle
+        function updateStatistics(code) {
+            document.getElementById('charCount').textContent = code.length + ' chars';
+            document.getElementById('lineCount').textContent = code.split('\n').length + ' lines';
+            document.getElementById('tokenCount').textContent = currentTokens.length + ' tokens';
+
+            // Token türlerine göre say
+            let keywords = 0, identifiers = 0, strings = 0, numbers = 0, comments = 0, operators = 0;
+            for (const token of currentTokens) {
+                switch (token.type) {
+                    case 'KEYWORD': keywords++; break;
+                    case 'IDENTIFIER': identifiers++; break;
+                    case 'STRING':
+                    case 'TEMPLATE': strings++; break;
+                    case 'NUMBER': numbers++; break;
+                    case 'COMMENT': comments++; break;
+                    case 'OPERATOR': operators++; break;
+                }
+            }
+            document.getElementById('keywordCount').textContent = keywords;
+            document.getElementById('identifierCount').textContent = identifiers;
+            document.getElementById('stringCount').textContent = strings;
+            document.getElementById('numberCount').textContent = numbers;
+            document.getElementById('commentCount').textContent = comments;
+            document.getElementById('operatorCount').textContent = operators;
+        }
+
+        // Gerçek zamanlı sözdizimi vurgulama
+        function updateSyntaxHighlighting(code) {
+            const syntaxOverlay = document.getElementById('syntaxOverlay');
+            currentTokens = highlighter.lexer.tokenize(code);
+            syntaxOverlay.innerHTML = highlighter.highlight(code);
+        }
+        
+        // ========== START APP ==========
+        // Already called in DOMContentLoaded above
+    </script>
+</body>
+</html>
