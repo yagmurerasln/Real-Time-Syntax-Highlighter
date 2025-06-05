@@ -20,7 +20,7 @@ Uygulama, kullanıcı yazarken anında sözdizimi vurgulaması yapar, 7 farklı 
 ## 🎨Token Listesi
 **KEYWORD:**        🖌RENK: #61c863<br>
 **IDENTIFIER:**     🖌RENK: #f5950e<br>
-**STRING:**         🖌RENK: #fe79b7<<br>
+**STRING:**         🖌RENK: #fe79b7<br>
 **NUMBER:**         🖌RENK: #8145f8 <br>
 **COMMENT:**        🖌RENK: #3c7626<br>
 **OPERATOR:**       🖌RENK: #fbff23<br>
