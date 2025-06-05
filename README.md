@@ -5,7 +5,6 @@ https://yagmurerasln.github.io/Real-Time-Syntax-Highlighter/<br><br>
 
 ## 📌 Proje Hakkında
 Bu proje, hiçbir harici kütüphane kullanmadan geliştirilmiştir. Gerçek zamanlı sözdizimi vurgulayıcı (syntax highlighter) içeren bir grafiksel kullanıcı arayüzü (GUI) uygulamasıdır. Sözdizimsel analiz, biçimsel bir gramer temel alınarak gerçekleştirilmiş olup, analiz süreci iki aşamadan oluşmaktadır:<br>
-
 - **Lexical Analysis** – Giriş kodunun belirli kurallara göre tokenlara ayrılması <br> 
 - **Sözdizimsel analiz (Parsing)** – Token akışının context-free grammar (CFG) ile parse edilmesi<br><br>
 
@@ -19,13 +18,13 @@ Uygulama, kullanıcı yazarken anında sözdizimi vurgulaması yapar, 7 farklı 
 🍄 Klavye kısayolları (örneğin: `Ctrl+S` ile dışa aktarım, `Ctrl+K` ile temizleme)  <br><br>
 
 ## 🎨Token Listesi
-**KEYWORD:** RENK: #61c863<br>
-**IDENTIFIER:** RENK: #f5950e<br>
-**STRING:** RENK: #fe79b7<<br>
-**NUMBER:** RENK: #8145f8 <br>
-**COMMENT:** RENK: #3c7626<br>
-**OPERATOR:** RENK: #fbff23<br>
-**PUNCTUATION:** RENK: #afb5ff<br><br>
+**KEYWORD:**        🖌RENK: #61c863<br>
+**IDENTIFIER:**     🖌RENK: #f5950e<br>
+**STRING:**         🖌RENK: #fe79b7<<br>
+**NUMBER:**         🖌RENK: #8145f8 <br>
+**COMMENT:**        🖌RENK: #3c7626<br>
+**OPERATOR:**       🖌RENK: #fbff23<br>
+**PUNCTUATION:**    🖌RENK: #afb5ff<br><br>
 
 ## 🧠 Kullanılan Yöntemler
 ### 🔤 Lexical Analysis
